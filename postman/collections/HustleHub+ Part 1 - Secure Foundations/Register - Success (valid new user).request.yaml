@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/register"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "name": "Postman Tester",
+      "email": "{{testEmail}}",
+      "password": "{{testPassword}}",
+      "role": "freelancer"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status is 201', () => pm.response.to.have.status(201));
+      const body = pm.response.json();
+      pm.test('Returns a token', () => pm.expect(body.data.token).to.be.a('string'));
+      pm.test('Response never includes passwordHash', () => pm.expect(body.data.user.passwordHash).to.be.undefined);
+      pm.collectionVariables.set('authToken', body.data.token);
+    language: text/javascript
+order: 2000

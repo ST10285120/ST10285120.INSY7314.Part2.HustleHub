@@ -1,0 +1,10 @@
+$kind: collection
+description: |-
+  Registration and login endpoint tests for the HustleHub+ Part 1 backend, including valid and invalid scenarios. Import into Postman, set the `baseUrl` collection variable if different from the default, and run in order (Register -> Login -> Protected Route) or via Collection Runner.
+
+  NOTE: Because the API uses a self-signed certificate for local HTTPS, disable 'SSL certificate verification' under Postman Settings > General before sending requests.
+variables:
+  baseUrl: https://localhost:5443/api
+  authToken: ""
+  testEmail: postman.tester@example.com
+  testPassword: Str0ng!Passw0rd

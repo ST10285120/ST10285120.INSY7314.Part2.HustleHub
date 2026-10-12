@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "does.not.exist@example.com",
+      "password": "TotallyWrongPass1!"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status is 401', () => pm.response.to.have.status(401));
+      pm.test('Identical generic message to wrong-password case', () => pm.expect(pm.response.json().message).to.eql('Invalid email or password.'));
+    language: text/javascript
+order: 9000

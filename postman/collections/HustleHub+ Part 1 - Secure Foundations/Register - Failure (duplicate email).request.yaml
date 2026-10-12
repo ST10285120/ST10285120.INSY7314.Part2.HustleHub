@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/register"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "name": "Postman Tester",
+      "email": "{{testEmail}}",
+      "password": "{{testPassword}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status is 409 Conflict', () => pm.response.to.have.status(409));
+      pm.test('No stack trace leaked', () => pm.expect(pm.response.text()).to.not.include('at '));
+    language: text/javascript
+order: 3000
