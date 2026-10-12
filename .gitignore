@@ -1,0 +1,15 @@
+node_modules/
+.env
+certs/*.pem
+logs/*.log
+coverage/
+.DS_Store
+npm-debug.log*
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# mongodb-memory-server downloads a local mongod binary into this cache
+.cache/
