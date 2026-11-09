@@ -26,7 +26,7 @@ function renderRegister() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe('Register page', () => {

@@ -26,7 +26,7 @@ function renderLogin() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe('Login page', () => {
