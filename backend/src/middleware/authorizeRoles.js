@@ -1,3 +1,5 @@
+const { recordAudit } = require('../utils/audit');
+
 function authorizeRoles(...allowedRoles) {
   return (req, res, next) => {
     if (!req.user) {
@@ -5,6 +7,12 @@ function authorizeRoles(...allowedRoles) {
     }
 
     if (!allowedRoles.includes(req.user.role)) {
+      recordAudit(req, {
+        event: 'access.denied',
+        outcome: 'failure',
+        target: `${req.method} ${req.originalUrl}`,
+        details: { requiredRoles: allowedRoles },
+      });
       return res.status(403).json({
         success: false,
         message: 'You do not have permission to perform this action.',
