@@ -202,7 +202,7 @@ Freelancers are self-employed, so nobody deducts PAYE for them. SARS treats them
 
 1. **Taxable income so far** = completed payments received in the current tax year (1 March – end of February) − business expenses the freelancer enters (never below zero).
 2. **Projection to a full year** = taxable income so far × 12 ÷ months elapsed. At least one month is assumed, so one early booking doesn't produce an inflated projection.
-3. **Progressive brackets** (SARS 2026/27) are applied to the projection: each slice of income is taxed only at its own rate.
+3. **Progressive brackets** (SARS 2026/27; SARS, 2026) are applied to the projection: each slice of income is taxed only at its own rate.
 
    | Taxable income (R) | Rate |
    |---|---|
@@ -313,7 +313,7 @@ After **5 consecutive failed logins** an account is locked for **15 minutes**, e
 
 ### 8.2 Server-side logout and token revocation
 
-A plain JWT stays valid until it expires, even after "logout". Each user now has a `tokenVersion` that is embedded in every token, and `authenticateToken` compares it with the database on every request:
+A plain JWT stays valid until it expires, even after "logout", because JWTs have no built-in revocation (OWASP, 2025i). Each user now has a `tokenVersion` that is embedded in every token, and `authenticateToken` compares it with the database on every request:
 
 - `POST /api/auth/logout` increments it, so **every token on every device** stops working immediately.
 - An admin suspending a user increments it as well, so a suspended user is kicked out at once.
@@ -329,7 +329,7 @@ Every request gets an `X-Request-Id`. nginx generates it, and the API validates 
 
 ### 8.5 Frontend session hardening
 
-The JWT is kept in `sessionStorage` (scoped to the tab and cleared when it closes) instead of `localStorage`. The app logs out automatically the moment the token expires, and it ends the session in the UI on any `401` from the API (for example after a revocation). Logout revokes the token on the server first. The strict CSP is what prevents injected script from reading the token in the first place.
+The JWT is kept in `sessionStorage` (scoped to the tab and cleared when it closes) instead of `localStorage`, following OWASP's advice not to keep sensitive data such as session identifiers in `localStorage`, where any script on the page can read it at any time (OWASP, 2025h). The app logs out automatically the moment the token expires, and it ends the session in the UI on any `401` from the API (for example after a revocation). Logout revokes the token on the server first. The strict CSP is what prevents injected script from reading the token in the first place.
 
 ---
 
@@ -373,7 +373,7 @@ The logs make every control *observable*. The CI pipeline's log-collection step 
 
 ## 10. CI/CD pipeline (GitHub Actions)
 
-`.github/workflows/ci.yml` runs on every push and pull request. **Any failing test or check fails the pipeline.**
+`.github/workflows/ci.yml` runs on every push and pull request. **Any failing test or check fails the pipeline.** This is the DevSecOps "shift-left" approach: security testing runs automatically on every change instead of at the end of the project. A systematic review of 54 peer-reviewed studies identified shift-left security and continuous security assessment as the two key recommended DevSecOps practices (Rajapakse et al., 2022). Following GitHub's hardening guidance, the workflow token is read-only by default (`permissions: contents: read`, with `security-events: write` only for the CodeQL job), CI secrets are generated per run and masked in the logs, and scanner versions are pinned (GitHub, 2026a).
 
 | Job | What it does | Fails when |
 |---|---|---|
@@ -389,13 +389,13 @@ The logs make every control *observable*. The CI pipeline's log-collection step 
 
 **Running the pipeline.** At the time of submission GitHub would not start any Actions job on this account ("The job was not started because your account is locked due to a billing issue"). The account is on GitHub Free with no payment method, so this is an account-level problem rather than a fault in the workflow, and a GitHub Support ticket has been opened. While the lock is in place, every check in the pipeline was run locally with the same tools and thresholds: `npm test` in both apps, `docker compose up`, Newman, and `bash scripts/security-scan.sh [--dast]` for npm audit, Semgrep, Trivy and ZAP. The results are in [section 11](#11-static-code-analysis), [section 12](#12-testing) and `docs/evidence/`.
 
-**Supply chain.** Trivy is run as the pinned `aquasec/trivy:0.69.3` image rather than through `aquasecurity/trivy-action`, because that action's tags were hijacked in March 2026 (CVE-2026-33634) and 0.69.3 is a known-safe release (Aqua Security, 2026). Dependencies are installed with `npm ci` from lockfiles, and Dependabot (`.github/dependabot.yml`) raises weekly update PRs for npm, the base images and the actions.
+**Supply chain.** Trivy is run as the pinned `aquasec/trivy:0.69.3` image rather than through `aquasecurity/trivy-action`, because that action's tags were hijacked in March 2026 (CVE-2026-33634) and 0.69.3 is a known-safe release (Aqua Security, 2026a). Dependencies are installed with `npm ci` from lockfiles, and Dependabot (`.github/dependabot.yml`) raises weekly update PRs for npm, the base images and the actions.
 
 ---
 
 ## 11. Static code analysis
 
-**Tools.** CodeQL finds data-flow vulnerabilities such as injection, XSS, log injection, missing rate limiting and insecure randomness. Semgrep runs pattern rules for OWASP Top 10, Express, React and secrets. Trivy and `npm audit` check dependencies, secrets and Dockerfiles. OWASP ZAP adds dynamic testing (DAST) against the running containers. All of them run in the pipeline, and the SARIF results appear in the job summary and as artifacts.
+**Tools.** CodeQL finds data-flow vulnerabilities such as injection, XSS, log injection, missing rate limiting and insecure randomness. Semgrep runs pattern rules for OWASP Top 10, Express, React and secrets. Trivy and `npm audit` check dependencies, secrets and Dockerfiles (Aqua Security, 2026b). OWASP ZAP adds dynamic testing (DAST) against the running containers (GitHub, 2026b; Semgrep, 2026; ZAP, 2026). All of them run in the pipeline, and the SARIF results appear in the job summary and as artifacts.
 
 **Running the scans locally.** `bash scripts/security-scan.sh` runs npm audit, Semgrep and Trivy (in Docker, with the same rules and thresholds as CI) and writes the reports to `docs/evidence/static-analysis/`. Add `--dast` while `docker compose` is up to include the ZAP baseline scan.
 
@@ -460,6 +460,8 @@ Runs against an in-memory MongoDB (`mongodb-memory-server`), so no database is n
 `Login`, `Register` and `GigCard` (Part 2) plus `Gigs.test.jsx` (booking confirmation shows the amount and the transaction reference, only clients can book), `charts.test.jsx` (bar tooltip on focus, table view, legend values, category shares), `Income.test.jsx` (summary tiles, threshold message, annual estimate and provisional payments, recalculating with expenses and age, error display), `Admin.test.jsx` (stats, suspend, unlock, no suspend button for admins) and `session.test.jsx` (token only in sessionStorage, expired token dropped, auto-logout on expiry and on a `401` event, route guards for each role).
 
 ### API — Postman / Newman
+
+Newman is Postman's command-line collection runner, so the same collections used during development run unchanged in the CI pipeline (Postman, 2026).
 
 - `postman/HustleHub_Part3.postman_collection.json` has **84 requests and 157 assertions**: the Part 2 requests plus transactions, tax insights, admin RBAC (every admin route as client and as freelancer), lockout, logout revocation and security headers.
 - `postman/HustleHub_RateLimit.postman_collection.json` loops failed logins until `429` and checks the message and `RateLimit` headers.
@@ -531,7 +533,9 @@ Part 1 screenshots remain in `docs/screenshots/`.
 
 ## 16. References
 
-Aqua Security, 2026. *Trivy ecosystem supply chain was briefly compromised (GHSA-69fq-xp46-6x23)*. [online] GitHub. Available at: <https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23> [Accessed 9 November 2026].
+Aqua Security, 2026a. *Trivy ecosystem supply chain was briefly compromised (GHSA-69fq-xp46-6x23)*. [online] GitHub. Available at: <https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23> [Accessed 9 November 2026].
+
+Aqua Security, 2026b. *First steps with Trivy*. [online] Trivy documentation. Available at: <https://trivy.dev/docs/dev/getting-started/> [Accessed 9 November 2026].
 
 Better Stack, 2026. *Ingesting logs via HTTP*. [online] Available at: <https://betterstack.com/docs/logs/ingesting-data/http/logs/> [Accessed 9 November 2026].
 
@@ -539,9 +543,9 @@ Docker, 2026. *Docker security best practices*. [online] Docker Inc. Available a
 
 Express.js, 2026. *Production best practices: security*. [online] Available at: <https://expressjs.com/en/advanced/best-practice-security/> [Accessed 7 September 2026].
 
-GitHub, 2026. *Security hardening for GitHub Actions*. [online] GitHub Docs. Available at: <https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions> [Accessed 9 November 2026].
+GitHub, 2026a. *Security hardening for GitHub Actions*. [online] GitHub Docs. Available at: <https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions> [Accessed 9 November 2026].
 
-GitHub, 2026. *About code scanning with CodeQL*. [online] GitHub Docs. Available at: <https://docs.github.com/en/code-security/code-scanning/introduction-to-code-scanning/about-code-scanning-with-codeql> [Accessed 9 November 2026].
+GitHub, 2026b. *About code scanning with CodeQL*. [online] GitHub Docs. Available at: <https://docs.github.com/en/code-security/code-scanning/introduction-to-code-scanning/about-code-scanning-with-codeql> [Accessed 9 November 2026].
 
 Jones, M., Bradley, J. and Sakimura, N., 2015. *RFC 7519: JSON web token (JWT)*. [online] Internet Engineering Task Force. Available at: <https://www.rfc-editor.org/rfc/rfc7519.html> [Accessed 7 September 2026].
 
@@ -565,8 +569,18 @@ OWASP, 2025f. *Logging cheat sheet*. [online] Available at: <https://cheatsheets
 
 OWASP, 2025g. *Password storage cheat sheet*. [online] Available at: <https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html> [Accessed 7 September 2026].
 
+OWASP, 2025h. *HTML5 security cheat sheet*. [online] Available at: <https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html> [Accessed 9 November 2026].
+
+OWASP, 2025i. *JSON web token cheat sheet*. [online] Available at: <https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet> [Accessed 9 November 2026].
+
+Postman, 2026. *Run and test collections from the command line using Newman CLI*. [online] Postman Docs. Available at: <https://learning.postman.com/docs/collections/using-newman-cli/command-line-integration-with-newman/> [Accessed 9 November 2026].
+
 Provos, N. and Mazières, D., 1999. A future-adaptable password scheme. *1999 USENIX Annual Technical Conference*. Monterey, CA, 6–11 June 1999. Berkeley, CA: USENIX Association.
+
+Rajapakse, R.N., Zahedi, M., Babar, M.A. and Shen, H., 2022. Challenges and solutions when adopting DevSecOps: a systematic review. *Information and Software Technology*, 141, p.106700. Available at: <https://doi.org/10.1016/j.infsof.2021.106700> [Accessed 9 November 2026].
 
 SARS, 2026. *Rates of tax for individuals*. [online] South African Revenue Service. Available at: <https://www.sars.gov.za/tax-rates/income-tax/rates-of-tax-for-individuals/> [Accessed 9 November 2026].
 
 Semgrep, 2026. *Semgrep Registry rulesets*. [online] Available at: <https://semgrep.dev/explore> [Accessed 9 November 2026].
+
+ZAP, 2026. *ZAP baseline scan*. [online] ZAP by Checkmarx. Available at: <https://www.zaproxy.org/docs/docker/baseline-scan/> [Accessed 9 November 2026].
