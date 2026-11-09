@@ -16,6 +16,8 @@ const bookingSchema = new mongoose.Schema(
       enum: ['confirmed', 'cancelled', 'completed'],
       default: 'confirmed',
     },
+    // Link to the separate Transaction record created with this booking.
+    transaction: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction', default: null },
   },
   { timestamps: true }
 );
