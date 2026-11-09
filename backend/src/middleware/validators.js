@@ -1,4 +1,6 @@
-const { body, validationResult } = require('express-validator');
+const { body, param, query, validationResult } = require('express-validator');
+const { AGE_GROUPS } = require('../services/taxService');
+const { AUDIT_EVENTS } = require('../models/AuditLog');
 
 const ALLOWED_ROLES = ['client', 'freelancer'];
 
@@ -111,7 +113,55 @@ const createBookingValidationRules = [
     .withMessage('gigId must be a valid id.'),
 ];
 
+const mongoIdParam = (name = 'id') =>
+  param(name).isMongoId().withMessage('A valid id is required.');
+
+const incomeInsightsValidationRules = [
+  query('expenses')
+    .optional()
+    .isFloat({ min: 0, max: 1000000000 })
+    .withMessage('Expenses must be a number between 0 and 1,000,000,000.')
+    .toFloat(),
+  query('ageGroup')
+    .optional()
+    .isIn(AGE_GROUPS)
+    .withMessage(`Age group must be one of: ${AGE_GROUPS.join(', ')}.`),
+];
+
+const listLimitRule = query('limit')
+  .optional()
+  .isInt({ min: 1, max: 500 })
+  .withMessage('Limit must be between 1 and 500.')
+  .toInt();
+
+const adminListUsersValidationRules = [
+  query('role').optional().isIn(['client', 'freelancer', 'admin']).withMessage('Invalid role filter.'),
+  listLimitRule,
+];
+
+const adminSetUserStatusValidationRules = [
+  mongoIdParam(),
+  body('isActive')
+    .exists()
+    .withMessage('isActive is required.')
+    .isBoolean()
+    .withMessage('isActive must be true or false.')
+    .toBoolean(),
+];
+
+const adminAuditLogValidationRules = [
+  query('event').optional().isIn(AUDIT_EVENTS).withMessage('Unknown audit event.'),
+  query('outcome').optional().isIn(['success', 'failure']).withMessage('Invalid outcome filter.'),
+  listLimitRule,
+];
+
 module.exports = {
+  mongoIdParam,
+  listLimitRule,
+  incomeInsightsValidationRules,
+  adminListUsersValidationRules,
+  adminSetUserStatusValidationRules,
+  adminAuditLogValidationRules,
   registerValidationRules,
   loginValidationRules,
   createGigValidationRules,
