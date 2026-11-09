@@ -7,6 +7,8 @@ import Gigs from './pages/Gigs';
 import MyGigs from './pages/MyGigs';
 import MyBookings from './pages/MyBookings';
 import Income from './pages/Income';
+import Transactions from './pages/Transactions';
+import Admin from './pages/Admin';
 
 export default function App() {
   return (
@@ -39,6 +41,22 @@ export default function App() {
             element={
               <ProtectedRoute role="client">
                 <MyBookings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/transactions"
+            element={
+              <ProtectedRoute role={['client', 'freelancer']}>
+                <Transactions />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute role="admin">
+                <Admin />
               </ProtectedRoute>
             }
           />

@@ -5,7 +5,7 @@ import FieldErrors from '../components/FieldErrors';
 import PasswordInput from '../components/PasswordInput';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, sessionMessage } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState(null);
@@ -31,6 +31,11 @@ export default function Login() {
   return (
     <div className="auth-page">
       <h1>Log in</h1>
+      {sessionMessage && (
+        <p className="notice notice-info" role="status">
+          {sessionMessage}
+        </p>
+      )}
       <form onSubmit={handleSubmit} noValidate>
         <label htmlFor="email">Email</label>
         <input
