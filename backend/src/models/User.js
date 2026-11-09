@@ -18,14 +18,33 @@ const userSchema = new mongoose.Schema(
       enum: ALLOWED_ROLES,
       default: 'client',
     },
+    // Suspended accounts cannot log in and their existing tokens stop working.
+    isActive: { type: Boolean, default: true },
+
+    // Account lockout (own security feature #1).
+    failedLoginAttempts: { type: Number, default: 0, select: false },
+    lockUntil: { type: Date, default: null, select: false },
+
+    // Token revocation (own security feature #2). Every JWT carries the
+    // tokenVersion it was issued with; bumping it invalidates them all.
+    tokenVersion: { type: Number, default: 0 },
+
+    lastLoginAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
+
+userSchema.methods.isLocked = function isLocked() {
+  return Boolean(this.lockUntil && this.lockUntil.getTime() > Date.now());
+};
 
 userSchema.set('toJSON', {
   virtuals: true,
   transform: (_doc, ret) => {
     delete ret.passwordHash;
+    delete ret.failedLoginAttempts;
+    delete ret.lockUntil;
+    delete ret.tokenVersion;
     delete ret.__v;
     return ret;
   },

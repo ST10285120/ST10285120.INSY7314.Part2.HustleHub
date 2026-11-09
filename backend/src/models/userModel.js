@@ -1,18 +1,23 @@
 const User = require('./User');
 
+function normaliseEmail(email) {
+  return String(email).trim().toLowerCase();
+}
+
 function findByEmail(email) {
-  const normalised = email.trim().toLowerCase();
-  return User.findOne({ email: normalised }).select('+passwordHash');
+  return User.findOne({ email: normaliseEmail(email) }).select(
+    '+passwordHash +failedLoginAttempts +lockUntil'
+  );
 }
 
 function findById(id) {
-  return User.findById(id).select('+passwordHash');
+  return User.findById(id);
 }
 
 function createUser({ name, email, passwordHash, role }) {
   return User.create({
     name,
-    email: email.trim().toLowerCase(),
+    email: normaliseEmail(email),
     passwordHash,
     role: role || 'client',
   });
@@ -21,7 +26,7 @@ function createUser({ name, email, passwordHash, role }) {
 function toSafeUser(user) {
   if (!user) return null;
   const obj = typeof user.toObject === 'function' ? user.toObject() : user;
-  const { passwordHash, __v, _id, ...rest } = obj;
+  const { passwordHash, failedLoginAttempts, lockUntil, tokenVersion, __v, _id, ...rest } = obj;
   return { id: String(_id), ...rest };
 }
 
