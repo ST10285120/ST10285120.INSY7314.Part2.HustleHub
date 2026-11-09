@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Student** | Carson Norman — ST10285120 |
-| **Module** | INSY7314 
+| **Module** | INSY7314 |
 | **Repository** | https://github.com/ST10285120/ST10285120.INSY7314.Part2.HustleHub |
 
 HustleHub+ is a freelance marketplace: freelancers advertise services (gigs), clients book them with a simulated payment, and admins oversee the platform. Part 1 built secure authentication, Part 2 turned it into a full MERN stack, and **Part 3 adds financial insights (income and tax estimation), the admin role, a separate transaction ledger, a CI/CD pipeline with automated security testing, Docker containerisation, centralised logging and monitoring, and extra security controls.**
@@ -38,7 +38,7 @@ HustleHub+ is a freelance marketplace: freelancers advertise services (gigs), cl
 | # | Part 2 feedback | What was done |
 |---|---|---|
 | 1 | Repository not in the EMWCCN classroom organisation | No classroom repository was provided for Part 3, so development continued in the existing project repository (link above), with Part 3 work done on the `part3-devsecops` branch and merged into `main` through a pull request. |
-| 2 | README missing identity and evidence | Name, student number, submission type, repository and video link at the top; evidence in [section 14](#14-demonstration-evidence) and as CI artifacts on every run. |
+| 2 | README missing identity and evidence | Name, student number, module and repository at the top; evidence in [section 14](#14-demonstration-evidence) and as CI artifacts on every run. |
 | 3 | No separate transaction record | New `Transaction` model. Every booking creates a transaction linked to the booking, the client and the freelancer (reference, amount, currency, status). Income is now derived from completed transactions. |
 | 4 | No admin role | Admin role with admin-only routes: platform stats, list users, suspend/reactivate/unlock users, list all gigs, bookings, transactions and the security audit log, and remove any gig. Jest and Newman prove that clients and freelancers get `403` on every admin route. |
 | 5 | No evidence of a `429` | `backend/src/__tests__/rateLimit.test.js` and `postman/HustleHub_RateLimit.postman_collection.json` both loop failed logins until the API answers `429`. |
@@ -179,7 +179,7 @@ Admins cannot self-register: the register endpoint only accepts `client` or `fre
 
 ### 4.4 Demo data
 
-`npm run seed` (or `npm run seed -- --reset`) creates the admin, two freelancers, two clients, five gigs and eleven bookings with transactions spread over eight months, so the income chart has data for the video. Demo accounts use `SEED_PASSWORD` (default `Demo!Passw0rd2026`). Seeding refuses to run when `NODE_ENV=production`.
+`npm run seed` (or `npm run seed -- --reset`) creates the admin, two freelancers, two clients, five gigs and eleven bookings with transactions spread over eight months, so the income chart and tax estimate have realistic data. Demo accounts use `SEED_PASSWORD` (default `Demo!Passw0rd2026`). Seeding refuses to run when `NODE_ENV=production`.
 
 ---
 
@@ -367,7 +367,7 @@ Each line is a JSON object with a timestamp, level, service, environment, reques
 
 ### How effective are the controls? (monitoring evaluation)
 
-The logs make every control *observable*. The CI run's log summary shows how many failed logins were blocked, how many accounts were locked, how many `403`s were denied and how many requests were rate-limited during the Newman run. If the controls were broken, those counts would be wrong and the Newman assertions would fail. Locally, `docker compose logs api` shows each of these events as one JSON line with its request ID, and the Admin console's security log lists the same events from the audit trail, so an administrator can see failed logins, lockouts and denied access without reading raw logs. In production, the same events would feed the Better Stack alerts above, so an attack shows up as a spike rather than going unnoticed.
+The logs make every control *observable*. The CI pipeline's log-collection step is built to summarise how many failed logins were blocked, how many accounts were locked, how many `403`s were denied and how many requests were rate-limited during the Newman run (it will produce this summary once GitHub Actions is unlocked, see section 10). If the controls were broken, those counts would be wrong and the Newman assertions would fail. Locally, `docker compose logs api` shows each of these events as one JSON line with its request ID, and the Admin console's security log lists the same events from the audit trail, so an administrator can see failed logins, lockouts and denied access without reading raw logs. In production, the same events would feed the Better Stack alerts above, so an attack shows up as a spike rather than going unnoticed.
 
 ---
 
@@ -501,7 +501,7 @@ Mapped to the OWASP Top 10 (OWASP, 2021).
 
 ## 14. Demonstration evidence
 
-Screenshots are in `docs/evidence/`. Files marked _TODO_ still need to be captured.
+Screenshots are in `docs/evidence/`.
 
 | Evidence | File |
 |---|---|
