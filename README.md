@@ -52,7 +52,7 @@ HustleHub+ is a freelance marketplace: freelancers advertise services (gigs), cl
 - **Transactions page** for clients and freelancers, and an **Admin console**.
 - **GitHub Actions pipeline**: install, `npm audit`, backend and frontend tests, builds, CodeQL, Semgrep, Trivy, Docker image build and scan, the full stack running in containers, Newman, an OWASP ZAP DAST scan, and log collection. It fails when any check fails. `scripts/security-scan.sh` runs the same scans locally.
 - **Docker**: one Dockerfile in `backend/`, one in `frontend/`, orchestrated by `docker-compose.yml` with MongoDB.
-- **Logging and monitoring**: structured JSON logs with request IDs and redaction, an optional Better Stack cloud log transport, and a MongoDB security audit trail.
+- **Logging and monitoring**: structured JSON logs with request IDs and redaction, logs shipped to Better Stack (cloud log management), and a MongoDB security audit trail.
 - **Extra security features**: account lockout, server-side token revocation, the security audit trail, request correlation IDs and frontend session hardening ([section 8](#8-own-security-features-beyond-the-minimum)).
 
 ---
@@ -92,7 +92,7 @@ The rules are enforced by the API: `authorizeRoles` checks the role on every rou
                                       mongo container (auth enabled, not published to host)
 
   Logs:  api stdout (JSON) ──► docker logs / CI artifact
-                          └──► Better Stack (cloud, optional)
+                          └──► Better Stack (cloud)
          security events  ──► MongoDB auditlogs collection (90-day TTL) ──► Admin "Security log"
 ```
 
@@ -361,13 +361,13 @@ Each line is a JSON object with a timestamp, level, service, environment, reques
 ### Where logs go
 
 1. **stdout as JSON** in containers, which `docker compose logs` collects. In CI the API log is saved as an artifact, and the job summary counts each security event.
-2. **Better Stack (cloud log management), optional.** Set `BETTERSTACK_SOURCE_TOKEN` and `BETTERSTACK_INGESTING_HOST` (Telemetry → Sources → Connect → HTTP). A custom winston transport (`utils/betterStackTransport.js`) batches logs every 2 s and ships them over HTTPS. If Better Stack is unreachable the API keeps working, and the failure is reported at most once a minute (Better Stack, 2026). Useful monitors: alert on more than 20 `auth.login.failure` events in 5 minutes, any `level=error`, or any `Rate limit exceeded`. The transport is built and switched off when no token is set; it was not connected to a Better Stack account for this submission, so the monitoring evidence comes from the container logs and the admin security log.
+2. **Better Stack (cloud log management).** Set `BETTERSTACK_SOURCE_TOKEN` and `BETTERSTACK_INGESTING_HOST` (Telemetry → Sources → Connect → HTTP). A custom winston transport (`utils/betterStackTransport.js`) batches logs every 2 s and ships them over HTTPS. If Better Stack is unreachable the API keeps working, and the failure is reported at most once a minute (Better Stack, 2026). Useful monitors: alert on more than 20 `auth.login.failure` events in 5 minutes, any `level=error`, or any `Rate limit exceeded`. The running stack is connected to a Better Stack source ("HustleHub API"): every request log and audit event (logins, lockouts, bookings, transactions, admin actions, errors) arrives in Live tail within seconds, where it can be searched by event name or request ID (see `docs/evidence/betterstack-live-tail.png`). Without a token the transport is simply switched off and logs still go to the console.
 3. **MongoDB audit trail** (section 8.3) for in-app review by admins.
 4. **Log files** (`logs/combined.log`, `logs/error.log`, rotated at 5–10 MB) for local runs without Docker.
 
 ### How effective are the controls? (monitoring evaluation)
 
-The logs make every control *observable*. The CI pipeline's log-collection step is built to summarise how many failed logins were blocked, how many accounts were locked, how many `403`s were denied and how many requests were rate-limited during the Newman run (it will produce this summary once GitHub Actions is unlocked, see section 10). If the controls were broken, those counts would be wrong and the Newman assertions would fail. Locally, `docker compose logs api` shows each of these events as one JSON line with its request ID, and the Admin console's security log lists the same events from the audit trail, so an administrator can see failed logins, lockouts and denied access without reading raw logs. In production, the same events would feed the Better Stack alerts above, so an attack shows up as a spike rather than going unnoticed.
+The logs make every control *observable*. The CI pipeline's log-collection step is built to summarise how many failed logins were blocked, how many accounts were locked, how many `403`s were denied and how many requests were rate-limited during the Newman run (it will produce this summary once GitHub Actions is unlocked, see section 10). If the controls were broken, those counts would be wrong and the Newman assertions would fail. Locally, `docker compose logs api` shows each of these events as one JSON line with its request ID, and the Admin console's security log lists the same events from the audit trail, so an administrator can see failed logins, lockouts and denied access without reading raw logs. The same events feed the Better Stack alerts above, so an attack shows up as a spike rather than going unnoticed.
 
 ---
 
@@ -493,7 +493,7 @@ Mapped to the OWASP Top 10 (OWASP, 2021).
 | **Security misconfiguration** (A05) | Helmet and nginx headers; no `X-Powered-By`; `no-store`; non-root, read-only containers with no capabilities; private networks; DB auth; refuses to start with a weak JWT secret | Trivy misconfig scan, CI smoke test (API not exposed) |
 | **Vulnerable components** (A06) | `npm audit`, Trivy fs and image scans in CI; Dependabot; advisories fixed (`uuid`, `react-router`); pinned scanner versions | CI backend, frontend, trivy-fs and docker jobs |
 | **Cryptographic failures** (A02) | HTTPS only (TLS 1.2+), HSTS, TLS re-encryption between containers; no secrets in images or the repo | Trivy secret scan, Semgrep `p/secrets` |
-| **Logging and monitoring failures** (A09) | Structured, redacted logs of all key events; audit trail; Better Stack transport; CI log summaries | CI log evidence, `security.test` audit tests |
+| **Logging and monitoring failures** (A09) | Structured, redacted logs of all key events; audit trail; centralised in Better Stack; CI log summaries | Better Stack live tail, CI log evidence, `security.test` audit tests |
 | **Denial of service** | Global and per-endpoint rate limits; 10 KB body limit; result limits on admin lists | `rateLimit.test`, Newman rate-limit loop |
 | **CSRF** | Not applicable to the API design: authentication is a bearer header, not a cookie, so a cross-site request can't carry credentials; CORS is restricted to one origin | Design review |
 
@@ -513,6 +513,7 @@ Screenshots are in `docs/evidence/`.
 | Transactions page | `docs/evidence/transactions.png` |
 | Admin console, users and security log | `docs/evidence/admin-overview.png`, `docs/evidence/admin-users.png`, `docs/evidence/admin-security-log.png` |
 | Logs and monitoring (structured API logs of security events; admin security log) | `docs/evidence/api-security-logs.png`, `docs/evidence/admin-security-log.png`, `docs/evidence/admin-security-log-lockout.png` (failed logins → lockout → admin unlock, plus `access.denied` on admin routes) |
+| Cloud logging (Better Stack live tail: failed logins, successful login and request logs from the running stack) | `docs/evidence/betterstack-live-tail.png` |
 
 Part 1 screenshots remain in `docs/screenshots/`.
 
