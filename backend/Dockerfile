@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1
 
 # ---- Stage 1: production dependencies only ----------------------------------
-FROM node:22-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 # --omit=dev keeps Jest, Supertest and mongodb-memory-server out of the image.
 RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 
 # ---- Stage 2: runtime -------------------------------------------------------
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 
 LABEL org.opencontainers.image.title="hustlehub-api" \
       org.opencontainers.image.description="HustleHub+ secure freelance marketplace API"
