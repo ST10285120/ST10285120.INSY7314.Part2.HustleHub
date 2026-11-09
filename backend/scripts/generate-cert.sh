@@ -17,7 +17,9 @@ openssl req -x509 -newkey rsa:2048 -nodes \
   -keyout "$CERT_DIR/key.pem" \
   -out "$CERT_DIR/cert.pem" \
   -days 365 \
-  -subj "/C=ZA/ST=Gauteng/L=Local/O=HustleHub/OU=Dev/CN=localhost"
+  -subj "/C=ZA/ST=Gauteng/L=Local/O=HustleHub/OU=Dev/CN=localhost" \
+  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
 
+chmod 600 "$CERT_DIR/key.pem"
 echo "Self-signed certificate generated in $CERT_DIR"
 echo "Remember: in Postman, disable 'SSL certificate verification' under Settings for local testing."
