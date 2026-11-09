@@ -6,7 +6,7 @@
 | **Module** | INSY7314 / APDS7311 — Application Development Security |
 | **Group members** | _TODO: list every member's name and student number_ |
 | **Demonstration video** | _TODO: paste the unlisted YouTube / OneDrive link_ |
-| **Repository** | _TODO: link to the repo in the EMWCCN classroom organisation_ |
+| **Repository** | https://github.com/ST10285120/ST10285120.INSY7314.Part2.HustleHub |
 
 HustleHub+ is a freelance marketplace: freelancers advertise services (gigs), clients book them with a simulated payment, and admins oversee the platform. Part 1 built secure authentication, Part 2 turned it into a full MERN stack, and **Part 3 adds financial insights (income and tax estimation), the admin role, a separate transaction ledger, a CI/CD pipeline with automated security testing, Docker containerisation, centralised logging and monitoring, and extra security controls.**
 
@@ -39,7 +39,7 @@ HustleHub+ is a freelance marketplace: freelancers advertise services (gigs), cl
 
 | # | Part 2 feedback | What was done |
 |---|---|---|
-| 1 | Repository not in the EMWCCN classroom organisation | _TODO: repository moved to the classroom organisation (link above)._ |
+| 1 | Repository not in the EMWCCN classroom organisation | No classroom repository was provided for Part 3, so development continued in the group's existing repository (link above), with Part 3 work done on the `part3-devsecops` branch and merged into `main` through a pull request. |
 | 2 | README missing identity and evidence | Name, student number, group and video placeholders at the top; evidence in [section 14](#14-demonstration-evidence) and as CI artifacts on every run. |
 | 3 | No separate transaction record | New `Transaction` model. Every booking creates a transaction linked to the booking, the client and the freelancer (reference, amount, currency, status). Income is now derived from completed transactions. |
 | 4 | No admin role | Admin role with admin-only routes: platform stats, list users, suspend/reactivate/unlock users, list all gigs, bookings, transactions and the security audit log, and remove any gig. Jest and Newman prove that clients and freelancers get `403` on every admin route. |
@@ -52,7 +52,7 @@ HustleHub+ is a freelance marketplace: freelancers advertise services (gigs), cl
 - **Tax estimation** using the SARS 2026/27 tables, explained step by step in the UI and in [5.2](#52-tax-estimation--how-the-logic-works).
 - **Income & tax dashboard** with a monthly income chart, income split, category breakdown, provisional tax payments and a bracket table.
 - **Transactions page** for clients and freelancers, and an **Admin console**.
-- **GitHub Actions pipeline**: install, `npm audit`, backend and frontend tests, builds, CodeQL, Semgrep, Trivy, Docker image build and scan, the full stack running in containers, Newman, and log collection. It fails when any check fails.
+- **GitHub Actions pipeline**: install, `npm audit`, backend and frontend tests, builds, CodeQL, Semgrep, Trivy, Docker image build and scan, the full stack running in containers, Newman, an OWASP ZAP DAST scan, and log collection. It fails when any check fails. `scripts/security-scan.sh` runs the same scans locally.
 - **Docker**: one Dockerfile in `backend/`, one in `frontend/`, orchestrated by `docker-compose.yml` with MongoDB.
 - **Logging and monitoring**: structured JSON logs with request IDs and redaction, an optional Better Stack cloud log transport, and a MongoDB security audit trail.
 - **Extra security features**: account lockout, server-side token revocation, the security audit trail, request correlation IDs and frontend session hardening ([section 8](#8-own-security-features-beyond-the-minimum)).
@@ -384,10 +384,12 @@ The logs make every control *observable*. The CI run's log summary shows how man
 | **codeql** | CodeQL `security-extended` queries (SAST) | Any finding with security-severity ≥ 7.0 (high/critical) |
 | **semgrep** | Semgrep: OWASP Top 10, Node.js, React, secrets and Dockerfile rules (SAST) | Any ERROR-severity finding |
 | **trivy-fs** | Trivy: dependency vulnerabilities, hard-coded secrets, Dockerfile misconfiguration | Any fixable HIGH/CRITICAL issue |
-| **docker** | Build both images → Trivy image scan → `docker compose up --wait` (all three containers healthy) → HTTPS/header smoke test (and checks that the API is *not* exposed) → Newman Part 3 collection → Newman rate-limit loop → collect logs → tear down | Image build, a critical image CVE, an unhealthy container, or any Newman assertion |
+| **docker** | Build both images → Trivy image scan → `docker compose up --wait` (all three containers healthy) → HTTPS/header smoke test (and checks that the API is *not* exposed) → Newman Part 3 collection → Newman rate-limit loop → **OWASP ZAP baseline scan (DAST)** of the running app → collect logs → tear down | Image build, a critical image CVE, an unhealthy container, any Newman assertion, or a ZAP FAIL rule (missing CSP, HSTS, X-Content-Type-Options, anti-clickjacking header, or a server version leak; see `.zap/rules.tsv`) |
 | **quality-gate** | Single required status | Any job above didn't succeed |
 
-**Artifacts on every run:** Jest results and coverage, the Vitest JUnit report, the frontend build, CodeQL and Semgrep SARIF, Trivy JSON reports, the Newman HTML and JUnit reports, and the API and client logs.
+**Artifacts on every run:** Jest results and coverage, the Vitest JUnit report, the frontend build, CodeQL and Semgrep SARIF, Trivy JSON reports, the Newman HTML and JUnit reports, the ZAP HTML/JSON/Markdown reports, and the API and client logs.
+
+**Running the pipeline.** At the time of submission GitHub would not start any Actions job on this account ("The job was not started because your account is locked due to a billing issue"). The account is on GitHub Free with no payment method, so this is an account-level problem rather than a fault in the workflow, and a GitHub Support ticket has been opened. While the lock is in place, every check in the pipeline was run locally with the same tools and thresholds: `npm test` in both apps, `docker compose up`, Newman, and `bash scripts/security-scan.sh [--dast]` for npm audit, Semgrep, Trivy and ZAP. The results are in [section 11](#11-static-code-analysis), [section 12](#12-testing) and `docs/evidence/`.
 
 **Supply chain.** Trivy is run as the pinned `aquasec/trivy:0.69.3` image rather than through `aquasecurity/trivy-action`, because that action's tags were hijacked in March 2026 (CVE-2026-33634) and 0.69.3 is a known-safe release (Aqua Security, 2026). Dependencies are installed with `npm ci` from lockfiles, and Dependabot (`.github/dependabot.yml`) raises weekly update PRs for npm, the base images and the actions.
 
@@ -395,7 +397,9 @@ The logs make every control *observable*. The CI run's log summary shows how man
 
 ## 11. Static code analysis
 
-**Tools.** CodeQL finds data-flow vulnerabilities such as injection, XSS, log injection, missing rate limiting and insecure randomness. Semgrep runs pattern rules for OWASP Top 10, Express, React and secrets. Trivy and `npm audit` check dependencies, secrets and Dockerfiles. All of them run in the pipeline, and the SARIF results appear in the job summary and as artifacts.
+**Tools.** CodeQL finds data-flow vulnerabilities such as injection, XSS, log injection, missing rate limiting and insecure randomness. Semgrep runs pattern rules for OWASP Top 10, Express, React and secrets. Trivy and `npm audit` check dependencies, secrets and Dockerfiles. OWASP ZAP adds dynamic testing (DAST) against the running containers. All of them run in the pipeline, and the SARIF results appear in the job summary and as artifacts.
+
+**Running the scans locally.** `bash scripts/security-scan.sh` runs npm audit, Semgrep and Trivy (in Docker, with the same rules and thresholds as CI) and writes the reports to `docs/evidence/static-analysis/`. Add `--dast` while `docker compose` is up to include the ZAP baseline scan.
 
 **What the results mean.** CodeQL ranks findings by `security-severity` (CVSS-like, 0–10). Semgrep ranks rules ERROR/WARNING/INFO. The pipeline blocks on high and critical CodeQL findings and on ERROR Semgrep findings. Lower-severity results are listed for review but don't block, because many are informational (for example "consider CSRF middleware", which doesn't apply to a bearer-token API with no cookies).
 
@@ -422,6 +426,8 @@ The logs make every control *observable*. The CI run's log summary shows how man
 | No per-account brute-force protection | Broken authentication | Account lockout (section 8.1) |
 | Login timing revealed whether an email exists | User enumeration | Dummy bcrypt comparison for unknown emails |
 | No frontend CSP; token in `localStorage` | XSS impact | Strict nginx CSP; `sessionStorage` and auto-expiry |
+| `body-parser` / `qs` advisories (backend) and `follow-redirects` (frontend) found by `npm audit` during Part 3 | Vulnerable dependency | `npm audit fix` to patched versions; production audit now reports 0 vulnerabilities |
+| CodeQL Action v3 being retired | Pipeline supply chain | Upgraded to `github/codeql-action@v4` |
 | Self-signed key could end up inside an image | Secret in image | Keys generated at container start into volumes |
 
 ---
@@ -445,11 +451,11 @@ Runs against an in-memory MongoDB (`mongodb-memory-server`), so no database is n
 
 ### Frontend — Vitest + React Testing Library (`cd frontend && npm test`)
 
-`Login`, `Register` and `GigCard` (Part 2) plus `charts.test.jsx` (bar tooltip on focus, table view, legend values, category shares), `Income.test.jsx` (summary tiles, threshold message, annual estimate and provisional payments, recalculating with expenses and age, error display), `Admin.test.jsx` (stats, suspend, unlock, no suspend button for admins) and `session.test.jsx` (token only in sessionStorage, expired token dropped, auto-logout on expiry and on a `401` event, route guards for each role).
+`Login`, `Register` and `GigCard` (Part 2) plus `Gigs.test.jsx` (booking confirmation shows the amount and the transaction reference, only clients can book), `charts.test.jsx` (bar tooltip on focus, table view, legend values, category shares), `Income.test.jsx` (summary tiles, threshold message, annual estimate and provisional payments, recalculating with expenses and age, error display), `Admin.test.jsx` (stats, suspend, unlock, no suspend button for admins) and `session.test.jsx` (token only in sessionStorage, expired token dropped, auto-logout on expiry and on a `401` event, route guards for each role).
 
 ### API — Postman / Newman
 
-- `postman/HustleHub_Part3.postman_collection.json` has **80 requests**: the Part 2 requests plus transactions, tax insights, admin RBAC (every admin route as client and as freelancer), lockout, logout revocation and security headers.
+- `postman/HustleHub_Part3.postman_collection.json` has **84 requests and 157 assertions**: the Part 2 requests plus transactions, tax insights, admin RBAC (every admin route as client and as freelancer), lockout, logout revocation and security headers.
 - `postman/HustleHub_RateLimit.postman_collection.json` loops failed logins until `429` and checks the message and `RateLimit` headers.
 
 ```bash
@@ -462,6 +468,8 @@ npx newman run postman/HustleHub_RateLimit.postman_collection.json --insecure --
 ```
 
 CI runs both on every push and keeps the HTML reports as artifacts.
+
+**Latest results:** Jest 107/107 passed, Vitest 38/38 passed, Newman Part 3 84 requests / 157 assertions with 0 failures, and the rate-limit collection reached `429 Too Many Requests` as expected. (One Newman test script originally redeclared a `data` variable, which is a syntax error in the Postman sandbox; it was renamed and the deprecated `postman.setNextRequest` replaced with `pm.execution.setNextRequest`.)
 
 ---
 
@@ -487,21 +495,19 @@ Mapped to the OWASP Top 10 (OWASP, 2021).
 
 ## 14. Demonstration evidence
 
-_TODO: add screenshots to `docs/evidence/` and keep the file names below._
+Screenshots are in `docs/evidence/`. Files marked _TODO_ still need to be captured.
 
 | Evidence | File |
 |---|---|
-| GitHub Actions run, all jobs green | `docs/evidence/ci-pipeline-green.png` |
-| Pipeline failing on a broken test (proves the gate) | `docs/evidence/ci-pipeline-failing.png` |
-| CodeQL / Semgrep job summaries | `docs/evidence/sast-results.png` |
-| Trivy results | `docs/evidence/trivy-results.png` |
-| `docker compose ps`, all healthy | `docs/evidence/docker-compose-healthy.png` |
-| Newman HTML report (Part 3 and rate limit) | `docs/evidence/newman-part3.png`, `docs/evidence/newman-ratelimit-429.png` |
-| Jest and Vitest results | `docs/evidence/jest-results.png`, `docs/evidence/vitest-results.png` |
-| Income & tax dashboard | `docs/evidence/income-dashboard.png` |
+| GitHub Actions run (blocked by the account billing lock, see section 10) | _TODO_ `docs/evidence/ci-pipeline-green.png` |
+| Local security scans (npm audit, Semgrep, Trivy, ZAP) | `docs/evidence/static-analysis/` (generated by `scripts/security-scan.sh --dast`) |
+| Docker containers running and healthy | `docs/evidence/docker-desktop-containers.png` |
+| Newman HTML report (Part 3 and rate limit) | _TODO_ `docs/evidence/newman-part3.png`, `docs/evidence/newman-ratelimit-429.png` |
+| Jest and Vitest results | _TODO_ `docs/evidence/jest-results.png`, `docs/evidence/vitest-results.png` |
+| Income & tax dashboard | `docs/evidence/income-dashboard.png`, `docs/evidence/income-tax-estimate.png` |
 | Transactions page | `docs/evidence/transactions.png` |
-| Admin console and security log | `docs/evidence/admin-overview.png`, `docs/evidence/admin-security-log.png` |
-| Logs (CI log summary and Better Stack live tail) | `docs/evidence/logging-ci-summary.png`, `docs/evidence/betterstack-live-tail.png` |
+| Admin console, users and security log | `docs/evidence/admin-overview.png`, `docs/evidence/admin-users.png`, `docs/evidence/admin-security-log.png` |
+| Logs (Better Stack live tail) | _TODO_ `docs/evidence/betterstack-live-tail.png` |
 
 Part 1 screenshots remain in `docs/screenshots/`.
 
