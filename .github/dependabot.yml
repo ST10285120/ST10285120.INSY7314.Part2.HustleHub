@@ -1,0 +1,21 @@
+# Weekly dependency update PRs: keeps npm packages, base images and actions
+# patched (CI runs on every Dependabot PR before it can be merged).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /backend
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: docker
+    directory: /backend
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

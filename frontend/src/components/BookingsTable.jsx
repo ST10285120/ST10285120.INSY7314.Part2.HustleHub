@@ -1,4 +1,4 @@
-import { formatPrice } from '../utils/format';
+import { formatPrice, formatDate } from '../utils/format';
 
 export default function BookingsTable({ bookings, partyLabel, partyKey }) {
   return (
@@ -10,13 +10,14 @@ export default function BookingsTable({ bookings, partyLabel, partyKey }) {
             <th>{partyLabel}</th>
             <th>Amount</th>
             <th>Status</th>
+            <th>Transaction</th>
             <th>Booked</th>
           </tr>
         </thead>
         <tbody>
           {bookings.map((b) => (
             <tr key={b._id || b.id}>
-              <td>{b.gig?.title}</td>
+              <td>{b.gig?.title || <span className="viz-muted">Removed gig</span>}</td>
               <td>{b[partyKey]?.name}</td>
               <td>{formatPrice(b.amount)}</td>
               <td>
@@ -24,7 +25,10 @@ export default function BookingsTable({ bookings, partyLabel, partyKey }) {
                   {b.paymentStatus}
                 </span>
               </td>
-              <td>{new Date(b.createdAt).toLocaleDateString()}</td>
+              <td>
+                <code>{b.transaction?.reference || '—'}</code>
+              </td>
+              <td>{formatDate(b.createdAt)}</td>
             </tr>
           ))}
         </tbody>

@@ -1,0 +1,119 @@
+{
+  "info": {
+    "name": "HustleHub+ Rate Limit Test (login brute force -> 429)",
+    "description": "Sends failed logins in a loop until the API answers 429 Too Many Requests (max 30 attempts). Run on its own after the main collection: newman run postman/HustleHub_RateLimit.postman_collection.json --insecure --env-var baseUrl=https://localhost:3000/api",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://localhost:3000/api"
+    },
+    {
+      "key": "attempt",
+      "value": "0"
+    },
+    {
+      "key": "maxAttempts",
+      "value": "30"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check (API reachable)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login brute force - repeat wrong password until 429",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"bruteforce.target@example.com\",\n  \"password\": \"Wrong!Passw0rd\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('attempt', Number(pm.collectionVariables.get('attempt')) + 1);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const attempt = Number(pm.collectionVariables.get('attempt'));",
+              "const max = Number(pm.collectionVariables.get('maxAttempts'));",
+              "if (pm.response.code === 429) {",
+              "  pm.test(`Rate limited with 429 after ${attempt} attempts`, () => pm.response.to.have.status(429));",
+              "  pm.test('Clear, generic rate-limit message', () => pm.expect(pm.response.json()).to.eql({ success: false, message: 'Too many login attempts. Please try again later.' }));",
+              "  pm.test('Standard RateLimit headers returned', () => { pm.expect(pm.response.headers.has('RateLimit')).to.be.true; pm.expect(pm.response.headers.has('RateLimit-Policy')).to.be.true; });",
+              "  pm.test('Limit applies within 11 failed attempts', () => pm.expect(attempt).to.be.at.most(11));",
+              "} else if (attempt >= max) {",
+              "  pm.test(`Expected a 429 within ${max} attempts`, () => pm.expect.fail(`still ${pm.response.code} after ${attempt} attempts`));",
+              "} else {",
+              "  pm.test(`Attempt ${attempt}: 401 before the limit`, () => pm.response.to.have.status(401));",
+              "  postman.setNextRequest(pm.info.requestName);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login - still blocked with the correct-looking password",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"bruteforce.target@example.com\",\n  \"password\": \"Str0ng!Passw0rd\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 429', () => pm.response.to.have.status(429));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

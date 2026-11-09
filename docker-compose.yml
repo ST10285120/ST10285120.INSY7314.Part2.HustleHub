@@ -1,0 +1,101 @@
+# HustleHub+ full stack: MongoDB + API + React client.
+#
+#   cp .env.example .env      # then fill in the secrets
+#   docker compose up --build
+#   open https://localhost:3000   (accept the self-signed certificate once)
+#
+# Only the client is published to the host. MongoDB and the API sit on private
+# networks; the browser reaches the API through nginx at /api.
+
+name: hustlehub
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+  api:
+    build:
+      context: ./backend
+    image: hustlehub-api:local
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5443
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/hustlehub?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://localhost:3000}
+      # Requests arrive through exactly one proxy (nginx); the API port is not
+      # published, so X-Forwarded-For can't be forged from outside.
+      TRUST_PROXY: 1
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      BETTERSTACK_SOURCE_TOKEN: ${BETTERSTACK_SOURCE_TOKEN:-}
+      BETTERSTACK_INGESTING_HOST: ${BETTERSTACK_INGESTING_HOST:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_TO_FILE: "false"
+    volumes:
+      - api-certs:/app/certs
+    networks:
+      - data
+      - web
+    expose:
+      - "5443"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  client:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+    image: hustlehub-client:local
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:8443"
+    volumes:
+      - client-certs:/etc/nginx/certs
+    networks:
+      - web
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  # The database network has no route to the internet.
+  data:
+    internal: true
+  web: {}
+
+volumes:
+  mongo-data:
+  api-certs:
+  client-certs:

@@ -1,8 +1,14 @@
 node_modules/
 .env
+!.env.example
 certs/*.pem
-logs/*.log
+backend/certs/
+logs/
+backend/logs/
 coverage/
+reports/
+backend/reports/
+frontend/reports/
 .DS_Store
 npm-debug.log*
 
@@ -13,3 +19,6 @@ frontend/.env
 
 # mongodb-memory-server downloads a local mongod binary into this cache
 .cache/
+
+# Newman / pipeline artefacts generated locally
+newman/
