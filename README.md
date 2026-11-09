@@ -512,7 +512,7 @@ Screenshots are in `docs/evidence/`. Files marked _TODO_ still need to be captur
 | Income & tax dashboard | `docs/evidence/income-dashboard.png`, `docs/evidence/income-tax-estimate.png` |
 | Transactions page | `docs/evidence/transactions.png` |
 | Admin console, users and security log | `docs/evidence/admin-overview.png`, `docs/evidence/admin-users.png`, `docs/evidence/admin-security-log.png` |
-| Logs and monitoring (structured API logs of security events; admin security log) | `docs/evidence/api-security-logs.png`, `docs/evidence/admin-security-log.png` |
+| Logs and monitoring (structured API logs of security events; admin security log) | `docs/evidence/api-security-logs.png`, `docs/evidence/admin-security-log.png`, `docs/evidence/admin-security-log-lockout.png` (failed logins → lockout → admin unlock, plus `access.denied` on admin routes) |
 
 Part 1 screenshots remain in `docs/screenshots/`.
 
