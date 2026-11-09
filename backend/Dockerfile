@@ -13,10 +13,10 @@ FROM node:22-alpine AS runtime
 LABEL org.opencontainers.image.title="hustlehub-api" \
       org.opencontainers.image.description="HustleHub+ secure freelance marketplace API"
 
+# The TLS key/cert paths default in docker-entrypoint.sh (not ENV here), so no
+# secret-looking variable is baked into the image metadata (Trivy DS-0031).
 ENV NODE_ENV=production \
     PORT=5443 \
-    SSL_KEY_PATH=/app/certs/key.pem \
-    SSL_CERT_PATH=/app/certs/cert.pem \
     LOG_TO_FILE=false
 
 # tini: proper PID 1 (signal forwarding for graceful shutdown).

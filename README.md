@@ -413,6 +413,8 @@ The logs make every control *observable*. The CI run's log summary shows how man
 | Trivy images | _TODO_ | 0 critical | |
 | npm audit (prod) | 0 high/critical | 0 | |
 
+**Remaining non-blocking findings (reviewed and accepted).** GitHub Actions referenced by version tag rather than commit SHA (Semgrep warning): risk is reduced by using only official `actions/*` and `github/*` actions, by running Trivy as a pinned image instead of the hijacked action, and by Dependabot updates. `USER_KEY = 'hustlehub_user'` in `api/client.js` (Semgrep "hardcoded username"): false positive, because it is the sessionStorage key name, not a username. Semgrep's `note` results confirm that controls are present (helmet CSP, HSTS, Referrer-Policy, X-Powered-By removed, rate limiting).
+
 **Issues found and fixed during the Part 3 security review**
 
 | Issue | Category | Fix |
@@ -428,6 +430,11 @@ The logs make every control *observable*. The CI run's log summary shows how man
 | No frontend CSP; token in `localStorage` | XSS impact | Strict nginx CSP; `sessionStorage` and auto-expiry |
 | `body-parser` / `qs` advisories (backend) and `follow-redirects` (frontend) found by `npm audit` during Part 3 | Vulnerable dependency | `npm audit fix` to patched versions; production audit now reports 0 vulnerabilities |
 | CodeQL Action v3 being retired | Pipeline supply chain | Upgraded to `github/codeql-action@v4` |
+| Placeholder JWT secret kept as a string literal in `config/env.js` | Semgrep `njsscan…hardcoded_secrets.node_secret` (ERROR) | The placeholder is now detected with a pattern, so no secret-looking literal is left in the code; production still refuses to start with it |
+| `SSL_KEY_PATH` set with `ENV` in the API Dockerfile | Trivy `DS-0031` (CRITICAL misconfiguration) | Removed from the image; the entrypoint sets the default path at start-up. The key itself was never in the image (it is generated into a volume) |
+| `X-Request-Id` written to a response header | Semgrep `njsscan…generic_header_injection` (ERROR) | Reviewed false positive: the value is either a fresh UUID or matches `^[A-Za-z0-9-]{8,64}$`, so it cannot contain CR/LF. Proven by `security.test.js` and suppressed inline with a `nosemgrep` comment that explains why |
+| nginx forwarded the client's `Host` header to the API | Semgrep `nginx…request-host-used` (warning) | nginx now sends the fixed upstream name (`$proxy_host`) |
+| Dependabot proposes brand-new releases immediately | Semgrep `dependabot-missing-cooldown` (warning) | 7-day `cooldown`, so a hijacked or broken release is usually pulled before it is proposed |
 | Self-signed key could end up inside an image | Secret in image | Keys generated at container start into volumes |
 
 ---

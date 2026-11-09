@@ -1,21 +1,28 @@
 # Weekly dependency update PRs: keeps npm packages, base images and actions
 # patched (CI runs on every Dependabot PR before it can be merged).
+# cooldown: wait 7 days after a release before proposing it, so a hijacked or
+# broken release is usually caught and pulled before it reaches this project.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /backend
     schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
     open-pull-requests-limit: 5
   - package-ecosystem: npm
     directory: /frontend
     schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
     open-pull-requests-limit: 5
   - package-ecosystem: docker
     directory: /backend
     schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
   - package-ecosystem: docker
     directory: /frontend
     schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
+    cooldown: { default-days: 7 }

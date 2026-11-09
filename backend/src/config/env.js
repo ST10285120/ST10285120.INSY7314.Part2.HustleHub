@@ -2,7 +2,9 @@ const path = require('path');
 require('dotenv').config();
 
 const REQUIRED_VARS = ['JWT_SECRET', 'MONGODB_URI'];
-const PLACEHOLDER_SECRET = 'replace_this_with_a_long_random_secret';
+// Matches the placeholder value shipped in .env.example (and similar
+// "change me" values) without keeping a secret-looking literal in the code.
+const PLACEHOLDER_PATTERN = /replace_this|change_?me|your_secret/i;
 
 function assertRequiredVarsPresent() {
   const missing = REQUIRED_VARS.filter((key) => !process.env[key]);
@@ -14,7 +16,7 @@ function assertRequiredVarsPresent() {
   }
 
   if (process.env.NODE_ENV === 'production') {
-    if (process.env.JWT_SECRET === PLACEHOLDER_SECRET) {
+    if (PLACEHOLDER_PATTERN.test(process.env.JWT_SECRET)) {
       throw new Error('Refusing to start in production with the default JWT_SECRET placeholder.');
     }
     if (process.env.JWT_SECRET.length < 32) {

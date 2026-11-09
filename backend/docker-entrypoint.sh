@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
 
+: "${SSL_KEY_PATH:=/app/certs/key.pem}"
+: "${SSL_CERT_PATH:=/app/certs/cert.pem}"
+export SSL_KEY_PATH SSL_CERT_PATH
+
 # Use a mounted certificate if there is one; otherwise create a self-signed
 # one for local use. The private key is generated inside the running
 # container (stored in a volume), never baked into the image.
