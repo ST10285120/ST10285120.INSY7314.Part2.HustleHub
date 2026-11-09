@@ -1,19 +1,21 @@
 {
   "name": "hustlehub-frontend",
-  "version": "2.0.0",
-  "description": "HustleHub+ React frontend (Part 2: Secure Stack)",
+  "version": "3.0.0",
+  "description": "HustleHub+ React frontend (Part 3: DevSecOps, monitoring and finalisation)",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:ci": "vitest run --reporter=default --reporter=junit --outputFile.junit=reports/vitest-junit.xml",
+    "audit:prod": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
     "axios": "^1.7.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2"
+    "react-router-dom": "^7.18.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.5.0",
@@ -23,5 +25,8 @@
     "jsdom": "^25.0.1",
     "vite": "^5.4.8",
     "vitest": "^2.1.2"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
