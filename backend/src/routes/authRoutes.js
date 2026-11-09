@@ -20,6 +20,8 @@ router.post(
 
 router.post('/login', loginLimiter, loginValidationRules, handleValidationErrors, authController.login);
 
+router.post('/logout', authenticateToken, authController.logout);
+
 router.get('/profile', authenticateToken, authController.getProfile);
 
 module.exports = router;
