@@ -924,9 +924,9 @@
               "script": {
                 "exec": [
                   "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json().data;",
-                  "pm.test('totalIncome matches the booked gig price (300, after the price update)', () => pm.expect(data.totalIncome).to.eql(300));",
-                  "pm.test('totalBookings is at least 1', () => pm.expect(data.totalBookings).to.be.above(0));"
+                  "const income = pm.response.json().data;",
+                  "pm.test('totalIncome matches the booked gig price (300, after the price update)', () => pm.expect(income.totalIncome).to.eql(300));",
+                  "pm.test('totalBookings is at least 1', () => pm.expect(income.totalBookings).to.be.above(0));"
                 ]
               }
             }
@@ -2040,7 +2040,7 @@
                   "pm.collectionVariables.set('lockoutAttempts', n);",
                   "pm.test(`Attempt ${n}: rejected with 401`, () => pm.response.to.have.status(401));",
                   "pm.test(`Attempt ${n}: generic message`, () => pm.expect(pm.response.json().message).to.eql('Invalid email or password.'));",
-                  "if (n < 5) { postman.setNextRequest(pm.info.requestName); }"
+                  "if (n < 5) { pm.execution.setNextRequest(pm.info.requestName); }"
                 ]
               }
             }

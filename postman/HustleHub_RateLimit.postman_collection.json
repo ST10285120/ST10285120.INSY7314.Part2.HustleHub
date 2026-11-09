@@ -80,7 +80,7 @@
               "  pm.test(`Expected a 429 within ${max} attempts`, () => pm.expect.fail(`still ${pm.response.code} after ${attempt} attempts`));",
               "} else {",
               "  pm.test(`Attempt ${attempt}: 401 before the limit`, () => pm.response.to.have.status(401));",
-              "  postman.setNextRequest(pm.info.requestName);",
+              "  pm.execution.setNextRequest(pm.info.requestName);",
               "}"
             ]
           }
