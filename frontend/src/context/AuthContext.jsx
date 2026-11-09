@@ -1,27 +1,73 @@
-import { createContext, useContext, useState, useCallback } from 'react';
-import { client, toDisplayError } from '../api/client';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import {
+  client,
+  toDisplayError,
+  tokenStore,
+  tokenExpiry,
+  USER_KEY,
+  SESSION_EXPIRED_EVENT,
+} from '../api/client';
 
 const AuthContext = createContext(null);
 
 function readStoredUser() {
   try {
-    const raw = localStorage.getItem('hustlehub_user');
+    const raw = sessionStorage.getItem(USER_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
+function readStoredToken() {
+  const token = tokenStore.get();
+  const exp = token ? tokenExpiry(token) : null;
+  // Drop a token that has already expired instead of sending it.
+  if (token && exp && exp <= Date.now()) {
+    tokenStore.clear();
+    return null;
+  }
+  return token;
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(readStoredUser);
-  const [token, setToken] = useState(() => localStorage.getItem('hustlehub_token'));
+  const [token, setToken] = useState(readStoredToken);
+  const [user, setUser] = useState(() => (readStoredToken() ? readStoredUser() : null));
+  const [sessionMessage, setSessionMessage] = useState(null);
 
   const persist = useCallback((nextUser, nextToken) => {
     setUser(nextUser);
     setToken(nextToken);
-    localStorage.setItem('hustlehub_user', JSON.stringify(nextUser));
-    localStorage.setItem('hustlehub_token', nextToken);
+    setSessionMessage(null);
+    sessionStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+    tokenStore.set(nextToken);
   }, []);
+
+  const clearSession = useCallback((message = null) => {
+    setUser(null);
+    setToken(null);
+    setSessionMessage(message);
+    tokenStore.clear();
+  }, []);
+
+  // Server said the token is no longer valid (expired, revoked, suspended).
+  useEffect(() => {
+    const onExpired = () => clearSession('Your session has ended. Please log in again.');
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, [clearSession]);
+
+  // Log out automatically the moment the JWT expires.
+  useEffect(() => {
+    if (!token) return undefined;
+    const exp = tokenExpiry(token);
+    if (!exp) return undefined;
+    const timer = setTimeout(
+      () => clearSession('Your session has expired. Please log in again.'),
+      Math.max(0, exp - Date.now())
+    );
+    return () => clearTimeout(timer);
+  }, [token, clearSession]);
 
   const register = useCallback(
     async ({ name, email, password, role }) => {
@@ -51,15 +97,20 @@ export function AuthProvider({ children }) {
     [persist]
   );
 
-  const logout = useCallback(() => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('hustlehub_user');
-    localStorage.removeItem('hustlehub_token');
-  }, []);
+  // Revoke the token on the server (all sessions), then clear it locally even
+  // if the network call fails.
+  const logout = useCallback(async () => {
+    try {
+      if (tokenStore.get()) await client.post('/auth/logout');
+    } catch {
+      // ignore - the local session is cleared regardless
+    } finally {
+      clearSession();
+    }
+  }, [clearSession]);
 
   return (
-    <AuthContext.Provider value={{ user, token, register, login, logout }}>
+    <AuthContext.Provider value={{ user, token, register, login, logout, sessionMessage }}>
       {children}
     </AuthContext.Provider>
   );
