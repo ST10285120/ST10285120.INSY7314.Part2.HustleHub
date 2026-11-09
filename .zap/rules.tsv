@@ -1,0 +1,6 @@
+10038	FAIL	(Content Security Policy header not set)
+10035	FAIL	(Strict-Transport-Security header not set)
+10021	FAIL	(X-Content-Type-Options header missing)
+10020	FAIL	(Missing anti-clickjacking header)
+10037	FAIL	(Server leaks information via X-Powered-By)
+10202	IGNORE	(Absence of anti-CSRF tokens - bearer-token API, no cookie sessions)
