@@ -403,15 +403,16 @@ The logs make every control *observable*. The CI run's log summary shows how man
 
 **What the results mean.** CodeQL ranks findings by `security-severity` (CVSS-like, 0–10). Semgrep ranks rules ERROR/WARNING/INFO. The pipeline blocks on high and critical CodeQL findings and on ERROR Semgrep findings. Lower-severity results are listed for review but don't block, because many are informational (for example "consider CSRF middleware", which doesn't apply to a bearer-token API with no cookies).
 
-**Results of the latest run** — _TODO: copy the job-summary tables from the latest green run here (or screenshot them into `docs/evidence/`)._
+**Results of the latest run** (local run of `scripts/security-scan.sh --dast` on 9 November 2026, because GitHub Actions is blocked; full reports in `docs/evidence/static-analysis/`). The first run found 3 blocking issues (2 Semgrep ERRORs and 1 Trivy CRITICAL), all fixed or reviewed below. The re-run passed.
 
 | Tool | Findings | Blocking | Notes |
 |---|---|---|---|
-| CodeQL (security-extended) | _TODO_ | 0 | |
-| Semgrep | _TODO_ | 0 | |
-| Trivy fs (deps, secrets, Dockerfiles) | _TODO_ | 0 | |
-| Trivy images | _TODO_ | 0 critical | |
-| npm audit (prod) | 0 high/critical | 0 | |
+| CodeQL (security-extended) | Runs only in GitHub Actions (blocked, see section 10) | – | |
+| Semgrep (414 rules: OWASP Top 10, Node.js, React, secrets, Dockerfile) | 24 (warnings and notes) + 1 reviewed and suppressed | 0 | Before the fixes: 32 findings, 2 blocking |
+| Trivy fs (deps, secrets, Dockerfiles) | 0 | 0 | Before the fixes: 1 CRITICAL (DS-0031) |
+| Trivy images | Runs in the CI docker job (blocked, see section 10) | – | |
+| npm audit (prod) | 0 | 0 | backend and frontend |
+| OWASP ZAP baseline (DAST, 60 passive rules) | 0 FAIL, 2 WARN | 0 | WARN: cache-control on `/sitemap.xml` (the SPA fallback page, no sensitive data) and the informational "Modern Web Application" notice |
 
 **Remaining non-blocking findings (reviewed and accepted).** GitHub Actions referenced by version tag rather than commit SHA (Semgrep warning): risk is reduced by using only official `actions/*` and `github/*` actions, by running Trivy as a pinned image instead of the hijacked action, and by Dependabot updates. `USER_KEY = 'hustlehub_user'` in `api/client.js` (Semgrep "hardcoded username"): false positive, because it is the sessionStorage key name, not a username. Semgrep's `note` results confirm that controls are present (helmet CSP, HSTS, Referrer-Policy, X-Powered-By removed, rate limiting).
 

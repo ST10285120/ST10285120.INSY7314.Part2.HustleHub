@@ -58,6 +58,7 @@ def main():
     args = parser.parse_args()
 
     findings = []
+    suppressed = []
     for path in args.reports:
         with open(path, encoding="utf-8") as fh:
             sarif = json.load(fh)
@@ -65,6 +66,14 @@ def main():
             rules = load_rules(run)
             for result in run.get("results", []) or []:
                 rule = rules.get(result.get("ruleId"))
+                # SARIF "suppressions": the finding was reviewed and suppressed in
+                # source (e.g. a justified `nosemgrep` comment). Listed, never blocking.
+                if result.get("suppressions"):
+                    suppressed.append({
+                        "rule": result.get("ruleId", "?"),
+                        "location": location_of(result),
+                    })
+                    continue
                 findings.append({
                     "rule": result.get("ruleId", "?"),
                     "level": level_of(result, rule),
@@ -97,6 +106,9 @@ def main():
             lines.append(f'| {"❌" if blocking(f) else ""} | {f["level"]} | {sev} | `{f["rule"]}` | `{f["location"]}` | {msg} |')
     else:
         lines.append("✅ No findings.")
+    if suppressed:
+        lines += ["", f"**{len(suppressed)}** reviewed finding(s) suppressed in source (not blocking):", ""]
+        lines += [f'- `{f["rule"]}` at `{f["location"]}`' for f in suppressed]
     report = "\n".join(lines) + "\n"
     print(report)
 
