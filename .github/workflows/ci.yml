@@ -130,7 +130,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           queries: security-extended
@@ -140,7 +140,7 @@ jobs:
               - '**/node_modules/**'
               - '**/dist/**'
 
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
         with:
           category: codeql-javascript
           # Keep the SARIF locally so the gate below works on private repos
@@ -149,7 +149,7 @@ jobs:
           output: codeql-results
 
       - name: Upload to GitHub code scanning (public repos / GHAS only)
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         continue-on-error: true
         with:
           sarif_file: codeql-results
