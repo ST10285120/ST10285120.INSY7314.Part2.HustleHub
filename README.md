@@ -363,13 +363,13 @@ Each line is a JSON object with a timestamp, level, service, environment, reques
 ### Where logs go
 
 1. **stdout as JSON** in containers, which `docker compose logs` collects. In CI the API log is saved as an artifact, and the job summary counts each security event.
-2. **Better Stack (cloud log management), optional.** Set `BETTERSTACK_SOURCE_TOKEN` and `BETTERSTACK_INGESTING_HOST` (Telemetry → Sources → Connect → HTTP). A custom winston transport (`utils/betterStackTransport.js`) batches logs every 2 s and ships them over HTTPS. If Better Stack is unreachable the API keeps working, and the failure is reported at most once a minute (Better Stack, 2026). Useful monitors: alert on more than 20 `auth.login.failure` events in 5 minutes, any `level=error`, or any `Rate limit exceeded`.
+2. **Better Stack (cloud log management), optional.** Set `BETTERSTACK_SOURCE_TOKEN` and `BETTERSTACK_INGESTING_HOST` (Telemetry → Sources → Connect → HTTP). A custom winston transport (`utils/betterStackTransport.js`) batches logs every 2 s and ships them over HTTPS. If Better Stack is unreachable the API keeps working, and the failure is reported at most once a minute (Better Stack, 2026). Useful monitors: alert on more than 20 `auth.login.failure` events in 5 minutes, any `level=error`, or any `Rate limit exceeded`. The transport is built and switched off when no token is set; it was not connected to a Better Stack account for this submission, so the monitoring evidence comes from the container logs and the admin security log.
 3. **MongoDB audit trail** (section 8.3) for in-app review by admins.
 4. **Log files** (`logs/combined.log`, `logs/error.log`, rotated at 5–10 MB) for local runs without Docker.
 
 ### How effective are the controls? (monitoring evaluation)
 
-The logs make every control *observable*. The CI run's log summary shows how many failed logins were blocked, how many accounts were locked, how many `403`s were denied and how many requests were rate-limited during the Newman run. If the controls were broken, those counts would be wrong and the Newman assertions would fail. In production, the same events feed the Better Stack alerts above, so an attack shows up as a spike rather than going unnoticed.
+The logs make every control *observable*. The CI run's log summary shows how many failed logins were blocked, how many accounts were locked, how many `403`s were denied and how many requests were rate-limited during the Newman run. If the controls were broken, those counts would be wrong and the Newman assertions would fail. Locally, `docker compose logs api` shows each of these events as one JSON line with its request ID, and the Admin console's security log lists the same events from the audit trail, so an administrator can see failed logins, lockouts and denied access without reading raw logs. In production, the same events would feed the Better Stack alerts above, so an attack shows up as a spike rather than going unnoticed.
 
 ---
 
@@ -515,7 +515,7 @@ Screenshots are in `docs/evidence/`. Files marked _TODO_ still need to be captur
 | Income & tax dashboard | `docs/evidence/income-dashboard.png`, `docs/evidence/income-tax-estimate.png` |
 | Transactions page | `docs/evidence/transactions.png` |
 | Admin console, users and security log | `docs/evidence/admin-overview.png`, `docs/evidence/admin-users.png`, `docs/evidence/admin-security-log.png` |
-| Logs (Better Stack live tail) | _TODO_ `docs/evidence/betterstack-live-tail.png` |
+| Logs and monitoring (structured API logs of security events; admin security log) | `docs/evidence/api-security-logs.png`, `docs/evidence/admin-security-log.png` |
 
 Part 1 screenshots remain in `docs/screenshots/`.
 
