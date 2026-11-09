@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { client, toDisplayError } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import GigCard from '../components/GigCard';
+import { formatPrice } from '../utils/format';
 import FieldErrors from '../components/FieldErrors';
 
 export default function Gigs() {
@@ -36,8 +37,12 @@ export default function Gigs() {
     setNotice(null);
     setError(null);
     try {
-      await client.post('/bookings', { gigId });
-      setNotice('Booking confirmed - payment simulated successfully.');
+      const res = await client.post('/bookings', { gigId });
+      const { booking, transaction } = res.data.data;
+      setNotice({
+        amount: booking.amount,
+        reference: transaction?.reference,
+      });
     } catch (err) {
       setError(toDisplayError(err));
     } finally {
@@ -89,7 +94,14 @@ export default function Gigs() {
       <p className="page-intro">Find a freelancer for your next job.</p>
       {notice && (
         <p className="notice" role="status">
-          {notice}
+          Booking confirmed - payment of {formatPrice(notice.amount)} simulated successfully.
+          {notice.reference && (
+            <>
+              {' '}
+              Transaction <code>{notice.reference}</code> recorded.{' '}
+              <Link to="/transactions">View transactions</Link>
+            </>
+          )}
         </p>
       )}
       <FieldErrors message={error?.message} fieldErrors={error?.fieldErrors} />
