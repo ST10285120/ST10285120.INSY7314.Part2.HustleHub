@@ -1,6 +1,6 @@
 const Gig = require('../models/Gig');
 const { AppError } = require('../middleware/errorHandler');
-const logger = require('../utils/logger');
+const { recordAudit } = require('../utils/audit');
 
 async function listGigs(req, res, next) {
   try {
@@ -43,7 +43,7 @@ async function createGig(req, res, next) {
       price,
       freelancer: req.user.sub,
     });
-    logger.info('Gig created', { gigId: gig.id, freelancerId: req.user.sub });
+    recordAudit(req, { event: 'gig.create', target: gig.id, details: { price: gig.price } });
     return res.status(201).json({ success: true, data: { gig } });
   } catch (err) {
     return next(err);
@@ -56,6 +56,13 @@ async function updateGig(req, res, next) {
     if (!gig) throw new AppError('Gig not found.', 404);
 
     if (String(gig.freelancer) !== String(req.user.sub)) {
+      // Possible IDOR attempt: record it, but answer exactly like a missing gig.
+      recordAudit(req, {
+        event: 'access.denied',
+        outcome: 'failure',
+        target: `${req.method} ${req.originalUrl}`,
+        details: { reason: 'not-gig-owner' },
+      });
       throw new AppError('Gig not found.', 404);
     }
 
@@ -67,7 +74,7 @@ async function updateGig(req, res, next) {
     if (isActive !== undefined) gig.isActive = isActive;
 
     await gig.save();
-    logger.info('Gig updated', { gigId: gig.id, freelancerId: req.user.sub });
+    recordAudit(req, { event: 'gig.update', target: gig.id });
     return res.status(200).json({ success: true, data: { gig } });
   } catch (err) {
     if (err.name === 'CastError') return next(new AppError('Gig not found.', 404));
@@ -81,11 +88,18 @@ async function deleteGig(req, res, next) {
     if (!gig) throw new AppError('Gig not found.', 404);
 
     if (String(gig.freelancer) !== String(req.user.sub)) {
+      // Possible IDOR attempt: record it, but answer exactly like a missing gig.
+      recordAudit(req, {
+        event: 'access.denied',
+        outcome: 'failure',
+        target: `${req.method} ${req.originalUrl}`,
+        details: { reason: 'not-gig-owner' },
+      });
       throw new AppError('Gig not found.', 404);
     }
 
     await gig.deleteOne();
-    logger.info('Gig deleted', { gigId: req.params.id, freelancerId: req.user.sub });
+    recordAudit(req, { event: 'gig.delete', target: req.params.id });
     return res.status(200).json({ success: true, message: 'Gig deleted.' });
   } catch (err) {
     if (err.name === 'CastError') return next(new AppError('Gig not found.', 404));
