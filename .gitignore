@@ -22,3 +22,4 @@ frontend/.env
 
 # Newman / pipeline artefacts generated locally
 newman/
+.idea/
