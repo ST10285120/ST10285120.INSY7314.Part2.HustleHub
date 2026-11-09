@@ -55,6 +55,17 @@ describe('POST /api/bookings', () => {
     expect(res.status).toBe(201);
     expect(res.body.data.booking.amount).toBe(gig.price);
     expect(res.body.data.booking.paymentStatus).toBe('paid');
+
+    // Part 3: a separate transaction record is created and linked to both users.
+    const { booking, transaction } = res.body.data;
+    expect(transaction).toBeDefined();
+    expect(transaction.reference).toMatch(/^TXN-[0-9A-F]{12}$/);
+    expect(transaction.booking).toBe(booking._id);
+    expect(transaction.client).toBe(client.user.id);
+    expect(transaction.freelancer).toBe(freelancer.user.id);
+    expect(transaction.amount).toBe(gig.price);
+    expect(transaction.status).toBe('completed');
+    expect(booking.transaction).toBe(transaction._id);
   });
 
   it('rejects a freelancer trying to book a gig (RBAC)', async () => {
